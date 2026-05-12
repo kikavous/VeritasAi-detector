@@ -1,343 +1,103 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeritasAI - AI Image Detection</title>
+    <title>VeritasAI - Detector de Imágenes</title>
 
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob:; style-src * 'unsafe-inline';">
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --bg: #0f172a;
-            --surface: #1e293b;
-            --surface-light: #334155;
-            --text: #f8fafc;
-            --text-muted: #94a3b8;
-            --border: #334155;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        header {
-            text-align: center;
-            padding: 3rem 0 2rem;
-        }
-
-        .logo {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .logo-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-        }
-
-        h1 {
-            font-size: 2.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #fff, #94a3b8);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin-bottom: 0.5rem;
-        }
-
-        .subtitle {
-            color: var(--text-muted);
-            font-size: 1.125rem;
-            max-width: 600px;
-            margin: 0 auto;
-        }
-
-        .model-status {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-top: 1rem;
-            padding: 0.5rem 1rem;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 9999px;
-            font-size: 0.875rem;
-        }
-
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: var(--warning);
-            animation: pulse 2s infinite;
-        }
-
-        .status-dot.loaded {
-            background: var(--success);
-            animation: none;
-        }
-
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-
-        .main-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-top: 2rem;
-        }
-
-        @media (max-width: 768px) {
-            .main-grid { grid-template-columns: 1fr; }
-        }
-
-        .card {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 2rem;
-        }
-
-        .upload-area {
-            border: 2px dashed var(--border);
-            border-radius: 12px;
-            padding: 3rem 2rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .upload-area:hover {
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.05);
-        }
-
-        .upload-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
-        .upload-text { font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem; }
-
-        input[type="file"] { display: none; }
-
-        .preview-container {
-            margin-top: 1.5rem;
-            display: none;
-        }
-
-        .preview-container.active { display: block; }
-
-        .preview-image {
-            width: 100%;
-            max-height: 400px;
-            object-fit: contain;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .analyze-btn {
-            width: 100%;
-            margin-top: 1rem;
-            padding: 0.875rem;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
-
-        .analyze-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .spinner {
-            width: 20px; height: 20px;
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top-color: white;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .results-panel { display: none; }
-        .results-panel.active { display: block; }
-
-        .verdict {
-            text-align: center;
-            padding: 2rem;
-            border-radius: 12px;
-            margin-bottom: 1.5rem;
-            border: 2px solid var(--border);
-        }
-
-        .verdict.ai { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
-        .verdict.real { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
-
-        .prob-bar { margin-bottom: 1rem; }
-        .prob-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; }
-        .progress-bar { width: 100%; height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 1s ease; }
+        :root { --primary: #6366f1; --bg: #0f172a; --surface: #1e293b; --text: #f8fafc; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 2rem; }
+        .card { background: var(--surface); padding: 2rem; border-radius: 16px; max-width: 500px; margin: auto; border: 1px solid #334155; }
+        .btn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 1rem; width: 100%; font-weight: bold; font-size: 1rem; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        #preview { width: 100%; max-height: 300px; object-fit: contain; margin-top: 1rem; border-radius: 8px; display: none; }
+        .status { margin-bottom: 1rem; font-size: 0.9rem; color: #94a3b8; }
+        .result { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; display: none; background: #0f172a; border: 2px solid var(--primary); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <div class="logo"><div class="logo-icon">🔍</div><h1>VeritasAI</h1></div>
-            <p class="subtitle">Detección de imágenes generadas por IA</p>
-            <div class="model-status">
-                <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Cargando modelo...</span>
-            </div>
-        </header>
 
-        <div class="main-grid">
-            <div class="card">
-                <h2 style="margin-bottom: 1rem;">📤 Subir Imagen</h2>
-                <div class="upload-area" id="uploadArea">
-                    <span class="upload-icon">📁</span>
-                    <div class="upload-text">Haz clic para buscar imagen</div>
-                    <input type="file" id="fileInput" accept="image/*">
-                </div>
-                <div class="preview-container" id="previewContainer">
-                    <img class="preview-image" id="previewImage">
-                    <button class="analyze-btn" id="analyzeBtn" disabled>Analizar Imagen</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h2 style="margin-bottom: 1rem;">📊 Resultados</h2>
-                <div id="emptyState" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                    Sube una imagen para analizar
-                </div>
-                <div class="results-panel" id="resultsPanel">
-                    <div class="verdict" id="verdictBox">
-                        <div id="verdictIcon" style="font-size: 2.5rem;"></div>
-                        <div id="verdictText" style="font-size: 1.25rem; font-weight: bold;"></div>
-                        <div id="confidenceText" style="font-size: 0.875rem;"></div>
-                    </div>
-                    <div id="probabilities"></div>
-                </div>
-            </div>
+    <h1>VeritasAI 🔍</h1>
+    <div class="status" id="statusText">⏳ Cargando Inteligencia Artificial...</div>
+    
+    <div class="card">
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📁 Seleccionar Imagen</button>
+        
+        <img id="preview" alt="Vista previa">
+        
+        <button class="btn" id="analyzeBtn" onclick="predict()" disabled>🚀 Analizar ahora</button>
+        
+        <div id="resultBox" class="result">
+            <h2 id="label">---</h2>
+            <p id="confidence">---</p>
         </div>
     </div>
 
     <script>
-        // TU MODELO DE TEACHABLE MACHINE
+        // 3. TU ENLACE ACTUALIZADO
         const MODEL_URL = "https://teachablemachine.withgoogle.com/models/VPWQNZdHz/";
         
         let model;
 
+        // Función para cargar el modelo al abrir la página
         async function init() {
             try {
-                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
-                document.getElementById('statusDot').classList.add('loaded');
-                document.getElementById('statusText').innerText = "Modelo Listo";
+                const modelURL = MODEL_URL + "model.json";
+                const metadataURL = MODEL_URL + "metadata.json";
+                
+                model = await tmImage.load(modelURL, metadataURL);
+                
+                document.getElementById('statusText').innerText = "✅ Modelo listo para usar";
+                document.getElementById('statusText').style.color = "#10b981";
                 document.getElementById('analyzeBtn').disabled = false;
-            } catch (e) {
-                document.getElementById('statusText').innerText = "Error al cargar modelo";
-                console.error(e);
+            } catch (error) {
+                console.error("Error cargando el modelo:", error);
+                document.getElementById('statusText').innerText = "❌ Error al conectar con el modelo";
+                document.getElementById('statusText').style.color = "#ef4444";
             }
         }
 
-        const uploadArea = document.getElementById('uploadArea');
-        const fileInput = document.getElementById('fileInput');
-        const previewImage = document.getElementById('previewImage');
-        const previewContainer = document.getElementById('previewContainer');
-
-        uploadArea.onclick = () => fileInput.click();
-
-        fileInput.onchange = (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    previewImage.src = event.target.result;
-                    previewContainer.classList.add('active');
-                    document.getElementById('resultsPanel').classList.remove('active');
-                    document.getElementById('emptyState').style.display = 'block';
-                };
-                reader.readAsDataURL(file);
+        // Mostrar la imagen cuando se sube
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const img = document.getElementById('preview');
+                img.src = reader.result;
+                img.style.display = "block";
+                document.getElementById('resultBox').style.display = "none";
             }
-        };
+            reader.readAsDataURL(e.target.files[0]);
+        });
 
-        document.getElementById('analyzeBtn').onclick = async () => {
-            const btn = document.getElementById('analyzeBtn');
-            btn.innerHTML = '<div class="spinner"></div> Analizando...';
-            btn.disabled = true;
-
-            const prediction = await model.predict(previewImage);
+        // Función de predicción
+        async function predict() {
+            const img = document.getElementById('preview');
+            const prediction = await model.predict(img);
+            
+            // Ordenar para ver cuál tiene más probabilidad
             prediction.sort((a, b) => b.probability - a.probability);
             
-            displayResults(prediction);
+            const resultBox = document.getElementById('resultBox');
+            const label = document.getElementById('label');
+            const confText = document.getElementById('confidence');
             
-            btn.innerHTML = 'Analizar Imagen';
-            btn.disabled = false;
-        };
-
-        function displayResults(prediction) {
-            document.getElementById('emptyState').style.display = 'none';
-            document.getElementById('resultsPanel').classList.add('active');
-
-            const top = prediction[0];
-            const isAI = top.className.toLowerCase().includes('ai');
-            const conf = (top.probability * 100).toFixed(1);
-
-            const box = document.getElementById('verdictBox');
-            box.className = 'verdict ' + (isAI ? 'ai' : 'real');
-            document.getElementById('verdictIcon').innerText = isAI ? '🤖' : '📸';
-            document.getElementById('verdictText').innerText = isAI ? 'Parece ser IA' : 'Parece Real';
-            document.getElementById('confidenceText').innerText = 'Confianza: ' + conf + '%';
-
-            let html = '';
-            prediction.forEach(p => {
-                const pConf = (p.probability * 100).toFixed(1);
-                const color = p.className.toLowerCase().includes('ai') ? 'var(--danger)' : 'var(--success)';
-                html += `
-                    <div class="prob-bar">
-                        <div class="prob-header"><span>${p.className}</span><span>${pConf}%</span></div>
-                        <div class="progress-bar"><div class="progress-fill" style="width:${pConf}%; background:${color}"></div></div>
-                    </div>
-                `;
-            });
-            document.getElementById('probabilities').innerHTML = html;
+            resultBox.style.display = "block";
+            
+            // Suponiendo que tus clases se llaman "IA" y "Real" (ajusta si tienen otros nombres)
+            const topResult = prediction[0].className;
+            label.innerText = "Resultado: " + topResult;
+            confText.innerText = "Probabilidad: " + (prediction[0].probability * 100).toFixed(2) + "%";
         }
 
+        // Arrancar la carga
         init();
     </script>
 </body>
