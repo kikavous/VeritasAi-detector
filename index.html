@@ -4,9 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>VeritasAI - AI Image Detection</title>
+
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://teachablemachine.withgoogle.com; script-src 'self' 'unsafe-eval' 'unsafe-inline' https://cdn.jsdelivr.net https://teachablemachine.withgoogle.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://teachablemachine.withgoogle.com;">
+
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
     <style>
         :root {
             --primary: #6366f1;
@@ -102,11 +106,6 @@
             animation: none;
         }
 
-        .status-dot.error {
-            background: var(--danger);
-            animation: none;
-        }
-
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
@@ -139,19 +138,13 @@
             transition: all 0.3s;
         }
 
-        .upload-area:hover, .upload-area.dragover {
+        .upload-area:hover {
             border-color: var(--primary);
             background: rgba(99, 102, 241, 0.05);
         }
 
-        .upload-area.disabled {
-            opacity: 0.5;
-            pointer-events: none;
-        }
-
         .upload-icon { font-size: 3rem; margin-bottom: 1rem; display: block; }
         .upload-text { font-size: 1.125rem; font-weight: 500; margin-bottom: 0.5rem; }
-        .upload-hint { color: var(--text-muted); font-size: 0.875rem; }
 
         input[type="file"] { display: none; }
 
@@ -181,16 +174,10 @@
             font-size: 1rem;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 0.5rem;
-        }
-
-        .analyze-btn:hover:not(:disabled) {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
         }
 
         .analyze-btn:disabled {
@@ -199,8 +186,7 @@
         }
 
         .spinner {
-            width: 20px;
-            height: 20px;
+            width: 20px; height: 20px;
             border: 2px solid rgba(255,255,255,0.3);
             border-top-color: white;
             border-radius: 50%;
@@ -210,396 +196,149 @@
         @keyframes spin { to { transform: rotate(360deg); } }
 
         .results-panel { display: none; }
-        .results-panel.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        .results-panel.active { display: block; }
 
         .verdict {
             text-align: center;
             padding: 2rem;
             border-radius: 12px;
             margin-bottom: 1.5rem;
-            position: relative;
-            overflow: hidden;
+            border: 2px solid var(--border);
         }
 
-        .verdict::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            opacity: 0.1;
-            z-index: 0;
-        }
+        .verdict.ai { border-color: var(--danger); background: rgba(239, 68, 68, 0.1); }
+        .verdict.real { border-color: var(--success); background: rgba(16, 185, 129, 0.1); }
 
-        .verdict.ai { border: 2px solid var(--danger); }
-        .verdict.ai::before { background: var(--danger); }
-        
-        .verdict.real { border: 2px solid var(--success); }
-        .verdict.real::before { background: var(--success); }
-
-        .verdict-content { position: relative; z-index: 1; }
-
-        .verdict-icon { font-size: 3rem; margin-bottom: 0.5rem; }
-        .verdict-label { font-size: 1.5rem; font-weight: 700; margin-bottom: 0.25rem; }
-        .verdict-confidence { color: var(--text-muted); font-size: 0.875rem; }
-
-        .class-probabilities {
-            margin-bottom: 1.5rem;
-        }
-
-        .prob-bar {
-            margin-bottom: 1rem;
-        }
-
-        .prob-header {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .prob-label { font-weight: 500; }
-        .prob-value { color: var(--text-muted); }
-
-        .progress-bar {
-            width: 100%;
-            height: 12px;
-            background: var(--bg);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            border-radius: 6px;
-            transition: width 1s ease;
-        }
-
-        .model-info {
-            margin-top: 1.5rem;
-            padding: 1rem;
-            background: var(--bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-        }
-
-        .model-info h4 {
-            font-size: 0.875rem;
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-        }
-
-        .model-classes {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem;
-        }
-
-        .class-tag {
-            padding: 0.25rem 0.75rem;
-            background: var(--surface-light);
-            border-radius: 9999px;
-            font-size: 0.75rem;
-        }
-
-        .class-tag.real { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-        .class-tag.ai { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
-
-        .disclaimer {
-            margin-top: 3rem;
-            padding: 1.5rem;
-            background: rgba(245, 158, 11, 0.1);
-            border: 1px solid rgba(245, 158, 11, 0.3);
-            border-radius: 8px;
-            text-align: center;
-            color: var(--text-muted);
-            font-size: 0.875rem;
-        }
-
-        .error-message {
-            display: none;
-            padding: 1rem;
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid var(--danger);
-            border-radius: 8px;
-            color: var(--danger);
-            margin-top: 1rem;
-            text-align: center;
-        }
-
-        .error-message.active { display: block; }
+        .prob-bar { margin-bottom: 1rem; }
+        .prob-header { display: flex; justify-content: space-between; margin-bottom: 0.5rem; font-size: 0.875rem; }
+        .progress-bar { width: 100%; height: 12px; background: var(--bg); border-radius: 6px; overflow: hidden; }
+        .progress-fill { height: 100%; transition: width 1s ease; }
     </style>
-<base target="_blank">
 </head>
 <body>
     <div class="container">
         <header>
-            <div class="logo">
-                <div class="logo-icon">🔍</div>
-                <h1>VeritasAI</h1>
-            </div>
-            <p class="subtitle">AI-powered image detection using your Teachable Machine model</p>
-            <div class="model-status" id="modelStatus">
+            <div class="logo"><div class="logo-icon">🔍</div><h1>VeritasAI</h1></div>
+            <p class="subtitle">Detección de imágenes generadas por IA</p>
+            <div class="model-status">
                 <span class="status-dot" id="statusDot"></span>
-                <span id="statusText">Loading AI Model...</span>
+                <span id="statusText">Cargando modelo...</span>
             </div>
         </header>
 
         <div class="main-grid">
             <div class="card">
-                <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">📤 Upload Image</h2>
-                
+                <h2 style="margin-bottom: 1rem;">📤 Subir Imagen</h2>
                 <div class="upload-area" id="uploadArea">
                     <span class="upload-icon">📁</span>
-                    <div class="upload-text">Drop your image here</div>
-                    <div class="upload-hint">or click to browse (JPG, PNG)</div>
+                    <div class="upload-text">Haz clic para buscar imagen</div>
                     <input type="file" id="fileInput" accept="image/*">
                 </div>
-
                 <div class="preview-container" id="previewContainer">
-                    <img class="preview-image" id="previewImage" alt="Preview">
-                    <button class="analyze-btn" id="analyzeBtn" disabled>
-                        <span>Loading Model...</span>
-                    </button>
+                    <img class="preview-image" id="previewImage">
+                    <button class="analyze-btn" id="analyzeBtn" disabled>Analizar Imagen</button>
                 </div>
-
-                <div class="error-message" id="errorMessage"></div>
             </div>
 
             <div class="card">
-                <h2 style="margin-bottom: 1.5rem; font-size: 1.25rem;">📊 Analysis Results</h2>
-                
-                <div id="emptyState" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
-                    <div style="font-size: 3rem; margin-bottom: 1rem;">🤖</div>
-                    <p>Upload an image to detect if it's AI-generated or Real</p>
+                <h2 style="margin-bottom: 1rem;">📊 Resultados</h2>
+                <div id="emptyState" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                    Sube una imagen para analizar
                 </div>
-
                 <div class="results-panel" id="resultsPanel">
                     <div class="verdict" id="verdictBox">
-                        <div class="verdict-content">
-                            <div class="verdict-icon" id="verdictIcon">🤖</div>
-                            <div class="verdict-label" id="verdictText">Analyzing...</div>
-                            <div class="verdict-confidence" id="confidenceText">Confidence: 0%</div>
-                        </div>
+                        <div id="verdictIcon" style="font-size: 2.5rem;"></div>
+                        <div id="verdictText" style="font-size: 1.25rem; font-weight: bold;"></div>
+                        <div id="confidenceText" style="font-size: 0.875rem;"></div>
                     </div>
-
-                    <div class="class-probabilities" id="probabilities">
-                        </div>
-
-                    <div class="model-info">
-                        <h4>Model Classes</h4>
-                        <div class="model-classes" id="modelClasses">
-                            <span class="class-tag real">Real</span>
-                            <span class="class-tag ai">Ai</span>
-                        </div>
-                    </div>
+                    <div id="probabilities"></div>
                 </div>
             </div>
-        </div>
-
-        <div class="disclaimer">
-            <strong>⚠️ Note:</strong> This detector uses your Teachable Machine model with two classes: <strong>Real</strong> and <strong>Ai</strong>. 
-            Accuracy depends on your training data. 
-            <a href="https://teachablemachine.withgoogle.com/models/VPWQNZdHz/" target="_blank" style="color: var(--primary);">View Model</a>
         </div>
     </div>
 
     <script>
-        // Teachable Machine Model URL
+        // TU MODELO DE TEACHABLE MACHINE
         const MODEL_URL = "https://teachablemachine.withgoogle.com/models/VPWQNZdHz/";
         
-        let model = null;
-        let maxPredictions = 0;
+        let model;
+
+        async function init() {
+            try {
+                model = await tmImage.load(MODEL_URL + "model.json", MODEL_URL + "metadata.json");
+                document.getElementById('statusDot').classList.add('loaded');
+                document.getElementById('statusText').innerText = "Modelo Listo";
+                document.getElementById('analyzeBtn').disabled = false;
+            } catch (e) {
+                document.getElementById('statusText').innerText = "Error al cargar modelo";
+                console.error(e);
+            }
+        }
 
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
-        const previewContainer = document.getElementById('previewContainer');
         const previewImage = document.getElementById('previewImage');
-        const analyzeBtn = document.getElementById('analyzeBtn');
-        const resultsPanel = document.getElementById('resultsPanel');
-        const emptyState = document.getElementById('emptyState');
-        const statusDot = document.getElementById('statusDot');
-        const statusText = document.getElementById('statusText');
-        const errorMessage = document.getElementById('errorMessage');
+        const previewContainer = document.getElementById('previewContainer');
 
-        // Load the model on page load
-        async function initModel() {
-            try {
-                const modelURL = MODEL_URL + "model.json";
-                const metadataURL = MODEL_URL + "metadata.json";
-                
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-                
-                // Update UI
-                statusDot.classList.add('loaded');
-                statusText.textContent = "Model Ready • Real vs Ai Detection";
-                analyzeBtn.disabled = false;
-                analyzeBtn.innerHTML = '<span>Analyze Image</span>';
-                uploadArea.classList.remove('disabled');
-                
-            } catch (error) {
-                console.error("Failed to load model:", error);
-                statusDot.classList.add('error');
-                statusText.textContent = "Model Load Failed";
-                showError("Failed to load Teachable Machine model. Make sure the model is public.");
+        uploadArea.onclick = () => fileInput.click();
+
+        fileInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    previewImage.src = event.target.result;
+                    previewContainer.classList.add('active');
+                    document.getElementById('resultsPanel').classList.remove('active');
+                    document.getElementById('emptyState').style.display = 'block';
+                };
+                reader.readAsDataURL(file);
             }
-        }
+        };
 
-        function showError(msg) {
-            errorMessage.textContent = msg;
-            errorMessage.classList.add('active');
-        }
+        document.getElementById('analyzeBtn').onclick = async () => {
+            const btn = document.getElementById('analyzeBtn');
+            btn.innerHTML = '<div class="spinner"></div> Analizando...';
+            btn.disabled = true;
 
-        // File upload handlers
-        uploadArea.addEventListener('click', () => {
-            if (!uploadArea.classList.contains('disabled')) {
-                fileInput.click();
-            }
-        });
-
-        uploadArea.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            if (!uploadArea.classList.contains('disabled')) {
-                uploadArea.classList.add('dragover');
-            }
-        });
-
-        uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-
-        uploadArea.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            if (!uploadArea.classList.contains('disabled') && e.dataTransfer.files.length) {
-                handleFile(e.dataTransfer.files[0]);
-            }
-        });
-
-        fileInput.addEventListener('change', (e) => {
-            if (e.target.files.length) handleFile(e.target.files[0]);
-        });
-
-        function handleFile(file) {
-            if (!file.type.startsWith('image/')) {
-                showError('Please upload an image file (JPG, PNG)');
-                return;
-            }
+            const prediction = await model.predict(previewImage);
+            prediction.sort((a, b) => b.probability - a.probability);
             
-            errorMessage.classList.remove('active');
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                previewImage.src = e.target.result;
-                previewContainer.classList.add('active');
-                resetResults();
-            };
-            reader.readAsDataURL(file);
-        }
-
-        function resetResults() {
-            resultsPanel.classList.remove('active');
-            emptyState.style.display = 'block';
-        }
-
-        analyzeBtn.addEventListener('click', analyzeImage);
-
-        async function analyzeImage() {
-            if (!model) {
-                showError('Model not loaded yet. Please wait.');
-                return;
-            }
-
-            analyzeBtn.disabled = true;
-            analyzeBtn.innerHTML = '<div class="spinner"></div><span>Analyzing...</span>';
-            emptyState.style.display = 'none';
-
-            try {
-                // Create an image element for prediction
-                const img = new Image();
-                img.src = previewImage.src;
-                
-                await new Promise((resolve, reject) => {
-                    img.onload = resolve;
-                    img.onerror = reject;
-                });
-
-                // Run prediction
-                const prediction = await model.predict(img);
-                
-                // Sort by probability (highest first)
-                prediction.sort((a, b) => b.probability - a.probability);
-                
-                displayResults(prediction);
-                
-            } catch (error) {
-                console.error("Prediction error:", error);
-                showError('Analysis failed. Please try another image.');
-            }
-
-            analyzeBtn.disabled = false;
-            analyzeBtn.innerHTML = '<span>Analyze Image</span>';
-        }
+            displayResults(prediction);
+            
+            btn.innerHTML = 'Analizar Imagen';
+            btn.disabled = false;
+        };
 
         function displayResults(prediction) {
-            resultsPanel.classList.add('active');
+            document.getElementById('emptyState').style.display = 'none';
+            document.getElementById('resultsPanel').classList.add('active');
 
-            const topPrediction = prediction[0];
-            const confidence = (topPrediction.probability * 100).toFixed(1);
-            
-            // Determine verdict based on class name
-            const className = topPrediction.className.toLowerCase().trim();
-            let verdict, icon, colorClass;
+            const top = prediction[0];
+            const isAI = top.className.toLowerCase().includes('ai');
+            const conf = (top.probability * 100).toFixed(1);
 
-            if (className === 'ai') {
-                verdict = 'AI Generated';
-                icon = '🤖';
-                colorClass = 'ai';
-            } else if (className === 'real') {
-                verdict = 'Authentic Photo';
-                icon = '✅';
-                colorClass = 'real';
-            } else {
-                verdict = topPrediction.className;
-                icon = '🔍';
-                colorClass = 'real';
-            }
+            const box = document.getElementById('verdictBox');
+            box.className = 'verdict ' + (isAI ? 'ai' : 'real');
+            document.getElementById('verdictIcon').innerText = isAI ? '🤖' : '📸';
+            document.getElementById('verdictText').innerText = isAI ? 'Parece ser IA' : 'Parece Real';
+            document.getElementById('confidenceText').innerText = 'Confianza: ' + conf + '%';
 
-            // Update verdict box
-            const verdictBox = document.getElementById('verdictBox');
-            verdictBox.className = 'verdict ' + colorClass;
-            document.getElementById('verdictIcon').textContent = icon;
-            document.getElementById('verdictText').textContent = verdict;
-            document.getElementById('confidenceText').textContent = `Confidence: ${confidence}%`;
-
-            // Update probability bars
-            const probContainer = document.getElementById('probabilities');
-            probContainer.innerHTML = prediction.map(p => {
-                const percent = (p.probability * 100).toFixed(1);
-                const isAi = p.className.toLowerCase().trim() === 'ai';
-                const barColor = isAi ? 'var(--danger)' : 'var(--success)';
-                const isTop = p === topPrediction;
-                
-                return `
+            let html = '';
+            prediction.forEach(p => {
+                const pConf = (p.probability * 100).toFixed(1);
+                const color = p.className.toLowerCase().includes('ai') ? 'var(--danger)' : 'var(--success)';
+                html += `
                     <div class="prob-bar">
-                        <div class="prob-header">
-                            <span class="prob-label">${p.className === 'Ai' ? '🤖 AI Generated' : '✅ Real Photo'}</span>
-                            <span class="prob-value">${percent}%</span>
-                        </div>
-                        <div class="progress-bar">
-                            <div class="progress-fill" style="width: ${percent}%; background: ${barColor}; opacity: ${isTop ? '1' : '0.5'};"></div>
-                        </div>
+                        <div class="prob-header"><span>${p.className}</span><span>${pConf}%</span></div>
+                        <div class="progress-bar"><div class="progress-fill" style="width:${pConf}%; background:${color}"></div></div>
                     </div>
                 `;
-            }).join('');
+            });
+            document.getElementById('probabilities').innerHTML = html;
         }
 
-        // Initialize on load
-        initModel();
+        init();
     </script>
 </body>
 </html>
