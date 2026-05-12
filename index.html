@@ -3,102 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VeritasAI - Detector de Imágenes</title>
+    <title>VeritasAI - Detector</title>
 
     <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval'; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob:; style-src * 'unsafe-inline';">
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
 
     <style>
-        :root { --primary: #6366f1; --bg: #0f172a; --surface: #1e293b; --text: #f8fafc; }
-        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 2rem; }
-        .card { background: var(--surface); padding: 2rem; border-radius: 16px; max-width: 500px; margin: auto; border: 1px solid #334155; }
-        .btn { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; margin-top: 1rem; width: 100%; font-weight: bold; font-size: 1rem; }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
-        #preview { width: 100%; max-height: 300px; object-fit: contain; margin-top: 1rem; border-radius: 8px; display: none; }
-        .status { margin-bottom: 1rem; font-size: 0.9rem; color: #94a3b8; }
-        .result { margin-top: 1.5rem; padding: 1rem; border-radius: 8px; display: none; background: #0f172a; border: 2px solid var(--primary); }
+        :root { --primary: #6366f1; --bg: #0f172a; --text: #f8fafc; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); text-align: center; padding: 20px; }
+        .card { background: #1e293b; padding: 30px; border-radius: 15px; max-width: 400px; margin: auto; border: 1px solid #334155; }
+        .btn { background: var(--primary); color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 10px; }
+        .btn:disabled { background: #475569; }
+        #preview { width: 100%; border-radius: 10px; margin-top: 15px; display: none; }
+        .status { margin-bottom: 20px; font-weight: bold; }
+        #result { margin-top: 20px; font-size: 1.2rem; display: none; padding: 10px; border-radius: 8px; background: #0f172a; border: 1px solid var(--primary); }
     </style>
 </head>
 <body>
 
     <h1>VeritasAI 🔍</h1>
-    <div class="status" id="statusText">⏳ Cargando Inteligencia Artificial...</div>
-    
+    <div id="status" class="status">⏳ Cargando IA...</div>
+
     <div class="card">
         <input type="file" id="fileInput" accept="image/*" style="display:none">
-        <button class="btn" onclick="document.getElementById('fileInput').click()">📁 Seleccionar Imagen</button>
+        <button class="btn" onclick="document.getElementById('fileInput').click()">📁 Subir Imagen</button>
         
-        <img id="preview" alt="Vista previa">
+        <img id="preview">
         
-        <button class="btn" id="analyzeBtn" onclick="predict()" disabled>🚀 Analizar ahora</button>
+        <button class="btn" id="runBtn" onclick="predict()" disabled>🚀 Analizar ahora</button>
         
-        <div id="resultBox" class="result">
-            <h2 id="label">---</h2>
-            <p id="confidence">---</p>
+        <div id="result">
+            <div id="label" style="font-weight: bold; font-size: 1.5rem;"></div>
+            <div id="conf"></div>
         </div>
     </div>
 
     <script>
-        // 3. TU ENLACE ACTUALIZADO
-        const MODEL_URL = "https://teachablemachine.withgoogle.com/models/VPWQNZdHz/";
+        // TU ENLACE (Asegúrate de que termina en /)
+        const URL_MODELO = "https://teachablemachine.withgoogle.com/models/VPWQNZdHz/";
         
         let model;
 
-        // Función para cargar el modelo al abrir la página
-        async function init() {
+        async function cargarIA() {
             try {
-                const modelURL = MODEL_URL + "model.json";
-                const metadataURL = MODEL_URL + "metadata.json";
-                
-                model = await tmImage.load(modelURL, metadataURL);
-                
-                document.getElementById('statusText').innerText = "✅ Modelo listo para usar";
-                document.getElementById('statusText').style.color = "#10b981";
-                document.getElementById('analyzeBtn').disabled = false;
-            } catch (error) {
-                console.error("Error cargando el modelo:", error);
-                document.getElementById('statusText').innerText = "❌ Error al conectar con el modelo";
-                document.getElementById('statusText').style.color = "#ef4444";
+                // Cargamos el modelo
+                model = await tmImage.load(URL_MODELO + "model.json", URL_MODELO + "metadata.json");
+                document.getElementById('status').innerText = "✅ IA LISTA";
+                document.getElementById('status').style.color = "#10b981";
+                document.getElementById('runBtn').disabled = false;
+            } catch (e) {
+                console.error(e);
+                document.getElementById('status').innerText = "❌ ERROR: No se pudo cargar la IA";
             }
         }
 
-        // Mostrar la imagen cuando se sube
-        document.getElementById('fileInput').addEventListener('change', function(e) {
+        // Mostrar imagen al seleccionarla
+        document.getElementById('fileInput').addEventListener('change', e => {
             const reader = new FileReader();
-            reader.onload = function() {
+            reader.onload = () => {
                 const img = document.getElementById('preview');
                 img.src = reader.result;
                 img.style.display = "block";
-                document.getElementById('resultBox').style.display = "none";
+                document.getElementById('result').style.display = "none";
             }
             reader.readAsDataURL(e.target.files[0]);
         });
 
-        // Función de predicción
+        // Analizar la imagen
         async function predict() {
             const img = document.getElementById('preview');
             const prediction = await model.predict(img);
             
-            // Ordenar para ver cuál tiene más probabilidad
+            // Ordenamos resultados
             prediction.sort((a, b) => b.probability - a.probability);
             
-            const resultBox = document.getElementById('resultBox');
-            const label = document.getElementById('label');
-            const confText = document.getElementById('confidence');
-            
-            resultBox.style.display = "block";
-            
-            // Suponiendo que tus clases se llaman "IA" y "Real" (ajusta si tienen otros nombres)
-            const topResult = prediction[0].className;
-            label.innerText = "Resultado: " + topResult;
-            confText.innerText = "Probabilidad: " + (prediction[0].probability * 100).toFixed(2) + "%";
+            document.getElementById('result').style.display = "block";
+            document.getElementById('label').innerText = prediction[0].className;
+            document.getElementById('conf').innerText = "Seguridad: " + (prediction[0].probability * 100).toFixed(1) + "%";
         }
 
-        // Arrancar la carga
-        init();
+        // Iniciar todo
+        cargarIA();
     </script>
 </body>
 </html>
